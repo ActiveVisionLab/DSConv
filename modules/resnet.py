@@ -2,8 +2,8 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/../')
 
 # Others
-from DSConv import DSConv2d
-from DSConvEngine import DSConvEngine
+from ..DSConv2d import DSConv2d
+from ..DSConvEngine import DSConvEngine
 
 # PyTorch
 import torch

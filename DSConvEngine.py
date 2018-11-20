@@ -1,6 +1,6 @@
 # Internal
-from DSConv import DSConv2d
-from Quantizer import Quantizer
+from .DSConv2d import DSConv2d
+from .Quantizer import Quantizer
 
 # Others
 import math

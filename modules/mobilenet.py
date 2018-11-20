@@ -1,13 +1,12 @@
 import sys, os
 sys.path.insert(0, '/home/marcelo/PyTorch/MobileNet-V2-Pytorch/')
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/../')
 
 # Others
 import math
 
 # Internal
-from DSConv import DSConv2d
-from DSConvEngine import DSConvEngine
+from ..DSConv2d import DSConv2d
+from ..DSConvEngine import DSConvEngine
 import MobileNetV2
 
 # Pytorch
