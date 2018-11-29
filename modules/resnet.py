@@ -4,6 +4,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/../')
 # Others
 from ..DSConv2d import DSConv2d
 from ..DSConvEngine import DSConvEngine
+from ..Activation import transform_activation
 
 # PyTorch
 import torch
@@ -42,7 +43,7 @@ class BasicBlock(nn.Module):
 
         out += residual
         out = self.relu(out)
-
+        out = transform_activation(out, 3, 3, 128)
         return out
 
 class Bottleneck(nn.Module):
