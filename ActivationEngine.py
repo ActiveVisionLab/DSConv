@@ -13,7 +13,7 @@ class ActivationEngine():
 
             elif isinstance(tmod, nn.Linear):
                 tmod.weight.data = mod.weight.data.cpu()
-                tmod.bias.data = mod.weight.data.cpu()
+                tmod.bias.data = mod.bias.data.cpu()
 
             elif isinstance(tmod, nn.BatchNorm2d):
                 tmod.weight.data =  mod.weight.data.cpu()
