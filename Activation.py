@@ -10,20 +10,16 @@ def transform_activation(tensor, mantissa, exponent, blk):
     # [channel, depth, height, width]
     shp = tensor.shape
     number_of_blocks = math.ceil(shp[1]/blk)
-
-    # Iterates through every channel
-    for c in range(shp[0]):
-        for i in range(number_of_blocks):
-            if i == number_of_blocks -1:
-                # Means this is the last block and possibly thinner 
-                tensor[c, i*blk:, ...] = to_block(tensor[c, i*blk:, ...])
-            else:
-                tensor[c, i*blk:(1+i)*blk, ...] = to_block(tensor[c, i*blk:(1+i)*blk, ...])
+    for i in range(number_of_blocks):
+        if i == number_of_blocks-1:
+            tensor[:, i*blk:, ...] = to_block(tensor[:, i*blk:, ...])
+        else:
+            tensor[:, i*blk:(1+i)*blk, ...] = to_block(tensor[:, i*blk:(1+i)*blk, ...])
     return tensor
 
 def to_block(blocks, mant=5):
     # This receives a shape of the array of:
-    # [bs_size, h, w]
+    # [channel, bs_size, h, w]
     blocks = quantize(blocks)
     #for h in range(blocks.shape[1]):
     #    for l in range(blocks.shape[2]):
@@ -32,32 +28,34 @@ def to_block(blocks, mant=5):
 
 def quantize(activations, mant=5):
     # This receives an array of shape:
-    # [bs_size, h, w]
+    # [channel, bs_size, h, w]
+    #print(activations[1, 0:32, 1, 1])
     absAct = torch.abs(activations)
     logAbs = torch.log2(absAct)
     intlogAbs = logAbs.type(torch.cuda.IntTensor)
-    maxlogAbs, _ = torch.max(intlogAbs, dim=0)
+    maxlogAbs, _ = torch.max(intlogAbs, dim=1)
     value = to_nearest(activations, maxlogAbs)
     return value
 
 def to_nearest(array, maxlog, mant=5):
     # This receives arrays of size:
-    # [bs_size, h, w]
-    # [h, w]
-    maxlog = maxlog.unsqueeze(0)
+    # [channel, bs_size, h, w]
+    # [channel, h, w]
+    maxlog = maxlog.unsqueeze(1)
     maxlog = torch.clamp(maxlog, -10, 10) # To avoid inf
-    maxlog.expand(array.shape[0], array.shape[1], array.shape[2])
+    maxlog = maxlog.expand(array.shape[0], array.shape[1], array.shape[2], array.shape[3])
     mantT = 5*torch.ones(array.shape).type(torch.cuda.IntTensor)
-    diff = mantT-maxlog
+    diff = mantT-maxlog+1
     scale = torch.pow(2, diff).type(torch.cuda.FloatTensor)
     array = array*scale
-    array = torch.clamp(array, -2**(mant-1), 2**(mant-1)-1)
+    array = torch.clamp(array, -2**8, 2**10)
     array = torch.round(array)
     array = array.type(torch.cuda.FloatTensor)
+    #print("INT Value:", array[1, 0:32, 1, 1])
     array = array/scale
+    #print("Quantized:",  array[1, 0:32, 1, 1])
+    #print("")
     return array
-
-
 
 def transform_activation2(tensor, mantissa, exponent, blk):
     """
