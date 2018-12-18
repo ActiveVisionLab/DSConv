@@ -18,17 +18,15 @@ class Quantizer:
         blcknump = np.asarray(blcknump)
         maxPos = np.max(blcknump)
         maxNeg = np.min(blcknump)
-        sc1 = self.maxV/maxPos
-        sc2 = self.minV/maxNeg
 
-        if sc1 < 0 and sc2 > 0 :
-            sc1 = sc2 + 1
-        if sc2< 0 and sc1 > 0:
-            sc2 = sc1 + 1
+        absmax = maxPos if abs(maxPos) > abs(maxNeg) else maxNeg
+        factor = +1 if abs(maxPos) > abs(maxNeg) else -1
+
+        sc = self.minV/absmax
 
         # Here we have to choose the lowest scaling because otherwise we will
         # go above the number of bits specified
-        self.scaling = sc1 if sc1<sc2 else sc2
+        self.scaling = sc
         self.scaled_blck = np.rint(self.scaling*blcknump)
 
         # Here we find the alpha value that minimizes 2-norm
@@ -39,6 +37,7 @@ class Quantizer:
         else:
             print("Using L2")
             self._finding_alpha_()
+
         if(debug):
             print("Max and minimum values:", self.maxV, self.minV)
             print("Original block:", self.original_blck)
@@ -47,6 +46,7 @@ class Quantizer:
             print("Alpha calculated:", self.alpha)
             print("Resulting effective block:",self.final_blck)
             input('')
+
 
         return self.final_blck, self.scaled_blck, self.alpha
 

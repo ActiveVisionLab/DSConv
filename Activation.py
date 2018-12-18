@@ -17,7 +17,7 @@ def transform_activation(tensor, mantissa, exponent, blk):
             tensor[:, i*blk:(1+i)*blk, ...] = quantize(tensor[:, i*blk:(1+i)*blk, ...])
     return tensor
 
-def quantize(activations, EXPONENT_WIDTH=4, MANTISSA_WIDTH=4):
+def quantize(activations, EXPONENT_WIDTH=4, MANTISSA_WIDTH=5):
     # This receives an array of shape:
     # [channel, bs_size, h, w]
     int_log = find_exponent(activations, EXPONENT_WIDTH)
