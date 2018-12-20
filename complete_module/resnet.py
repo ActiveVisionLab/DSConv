@@ -39,7 +39,7 @@ class BasicBlock(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
         out = self.conv2(out)
         out = self.bn2(out)
 
@@ -48,7 +48,7 @@ class BasicBlock(nn.Module):
 
         out += residual
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
         return out
 
 class Bottleneck(nn.Module):
@@ -77,12 +77,12 @@ class Bottleneck(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
 
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -92,12 +92,12 @@ class Bottleneck(nn.Module):
 
         out+=residual
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
 
         return out
 
 class CompleteBlockResNet(nn.Module):
-    def __init__(self, block, layers, block_size=32, num_classes = 1000, m=3, e=3):
+    def __init__(self, block, layers, block_size=32, num_classes = 1000, e=5, m=6):
         self.inplanes = 64
         super(CompleteBlockResNet, self).__init__()
 
@@ -143,7 +143,7 @@ class CompleteBlockResNet(nn.Module):
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        x = transform_activation(x, self.m, self.e, self.block_size)
+        x = transform_activation(x, self.e, self.m, self.block_size)
 
         x = self.layer1(x)
         x = self.layer2(x)
@@ -156,11 +156,11 @@ class CompleteBlockResNet(nn.Module):
 
         return x
 
-def complete_block_resnet101(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000):
+def complete_block_resnet101(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000, acte=5, actm=6):
     """Constructs a ResNet101 model
     """
 
-    block_model =  CompleteBlockResNet(Bottleneck, [3, 4, 23, 3], block_size=block_size, num_classes=num_classes)
+    block_model =  CompleteBlockResNet(Bottleneck, [3, 4, 23, 3], block_size=block_size, num_classes=num_classes, e=acte, m=actm)
 
     if pretrained==True:
         model = torchvision.models.resnet101(pretrained=True)
@@ -169,20 +169,20 @@ def complete_block_resnet101(pretrained=False, bit_nmb=8, block_size=32, num_cla
 
     return block_model
 
-def complete_block_resnet50(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000):
+def complete_block_resnet50(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000, acte=5, actm=6):
     """ Constructs a ResNet50 model
     """
-    block_model = CompleteBlockResNet(Bottleneck, [3, 4, 6, 3], block_size = block_size, num_classes=num_classes)
+    block_model = CompleteBlockResNet(Bottleneck, [3, 4, 6, 3], block_size = block_size, num_classes=num_classes, e=acte, m=actm)
     if pretrained==True:
         model = torchvision.models.resnet50(pretrained=True)
         eng = DSConvEngine(block_size, bit_nmb)
         block_model = eng(model, block_model)
     return block_model
 
-def complete_block_resnet34(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000):
+def complete_block_resnet34(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000, acte=5, actm=6):
     """ Constructs a ResNet34 model
     """
-    block_model = CompleteBlockResNet(BasicBlock, [3, 4, 6, 3], block_size=block_size, num_classes=num_classes)
+    block_model = CompleteBlockResNet(BasicBlock, [3, 4, 6, 3], block_size=block_size, num_classes=num_classes, e=acte, m=actm)
 
     if pretrained==True:
         model = torchvision.models.resnet34(pretrained=True)

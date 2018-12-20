@@ -61,7 +61,7 @@ class BasicBlock(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
 
         out = self.conv2(out)
         out = self.bn2(out)
@@ -71,7 +71,7 @@ class BasicBlock(nn.Module):
 
         out += residual
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
         return out
 
 class Bottleneck(nn.Module):
@@ -100,12 +100,12 @@ class Bottleneck(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
 
         out = self.conv2(out)
         out = self.bn2(out)
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
 
         out = self.conv3(out)
         out = self.bn3(out)
@@ -115,7 +115,7 @@ class Bottleneck(nn.Module):
 
         out+=residual
         out = self.relu(out)
-        out = transform_activation(out, self.m, self.e, self.block_size)
+        out = transform_activation(out, self.e, self.m, self.block_size)
 
         return out
 
@@ -165,7 +165,7 @@ class TruncatedResNet(nn.Module):
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
-        x = transform_activation(x, self.m, self.e, self.block_size)
+        x = transform_activation(x, self.e, self.m, self.block_size)
 
         x = self.layer1(x)
         x = self.layer2(x)
