@@ -1,96 +1,33 @@
-# Other
-import numpy as np
-
 # PyTorch
 import torch
 import torch.nn as nn
 
-class QuantizerTorch:
-    def __init__(self, nmb_bits):
-        self.nmb_bits = nmb_bits
-        self.maxV = pow(2, self.nmb_bits-1)-1
-        self.minV = -1*pow(2, self.nmb_bits-1)
-
-    def quantize_block(self, blcknump, debug=False, alpha_calc='L2'):
-        # Here we assume that blcknump will be of size:
-            # [nmb_blocks, channel, blk, height, width]
-        # The idea is to do that in parallel using torch instead of iteratively
-        # Finding the Scaling to quantize using full range
-        self.original_blck = blcknump
-        blcknump = np.asarray(blcknump)
-        maxPos = np.max(blcknump)
-        maxNeg = np.min(blcknump)
-
-        absmax = maxPos if abs(maxPos) > abs(maxNeg) else maxNeg
-        factor = +1 if abs(maxPos) > abs(maxNeg) else -1
-
-        sc = self.minV/absmax
-
-        # Here we have to choose the lowest scaling because otherwise we will
-        # go above the number of bits specified
-        self.scaling = sc
-        self.scaled_blck = np.rint(self.scaling*blcknump)
-
-        # Here we find the alpha value that minimizes 2-norm
-        if alpha_calc=='L2':
-            self._finding_alpha_()
-        elif alpha_calc=='KL':
-            self._finding_alpha_KL_()
-        else:
-            print("Using L2")
-            self._finding_alpha_()
-
-        if(debug):
-            print("Max and minimum values:", self.maxV, self.minV)
-            print("Original block:", self.original_blck)
-            print("Scaled block:", self.scaled_blck)
-            print("Scaling applied:", self.scaling)
-            print("Alpha calculated:", self.alpha)
-            print("Resulting effective block:",self.final_blck)
-            input('')
-
-        return self.final_blck, self.scaled_blck, self.alpha
 class Quantizer:
 
     def __init__(self, nmb_bits):
         self.nmb_bits = nmb_bits
-        self.maxV = pow(2, self.nmb_bits-1)-1
         self.minV = -1*pow(2, self.nmb_bits-1)
 
     def quantize_block(self, blcknump, debug=False, alpha_calc='L2'):
         # Finding the Scaling to quantize using full range
+        # This receives the block in shape [blk, height, width]
+
         self.original_blck = blcknump
-        blcknump = np.asarray(blcknump)
-        maxPos = np.max(blcknump)
-        maxNeg = np.min(blcknump)
 
-        absmax = maxPos if abs(maxPos) > abs(maxNeg) else maxNeg
-        factor = +1 if abs(maxPos) > abs(maxNeg) else -1
+        absblcknump = torch.abs(blcknump)
+        _, indexPos = torch.max(absblcknump, dim=0)
+        absmax = torch.gather(blcknump, 0, indexPos.unsqueeze(0))
 
-        sc = self.minV/absmax
+        self.scaling = self.minV/absmax
 
-        # Here we have to choose the lowest scaling because otherwise we will
-        # go above the number of bits specified
-        self.scaling = sc
-        self.scaled_blck = np.rint(self.scaling*blcknump)
+        # Half LSB rounding
+        self.scaled_blck = torch.round(self.scaling*blcknump)
 
         # Here we find the alpha value that minimizes 2-norm
-        if alpha_calc=='L2':
-            self._finding_alpha_()
-        elif alpha_calc=='KL':
-            self._finding_alpha_KL_()
-        else:
-            print("Using L2")
-            self._finding_alpha_()
+        self._finding_alpha_KL_() if alpha_calc=='KL' else self._finding_alpha_()
 
-        if(debug):
-            print("Max and minimum values:", self.maxV, self.minV)
-            print("Original block:", self.original_blck)
-            print("Scaled block:", self.scaled_blck)
-            print("Scaling applied:", self.scaling)
-            print("Alpha calculated:", self.alpha)
-            print("Resulting effective block:",self.final_blck)
-            input('')
+        if debug:
+            self._report_()
 
         return self.final_blck, self.scaled_blck, self.alpha
 
@@ -124,10 +61,19 @@ class Quantizer:
         """
         # Applying minimum squares we can find a value of the "bonus multiply"
         # that minimizes the square distance to the original block
-        numerator = np.dot(self.original_blck, self.scaled_blck)
-        denominator = np.dot(self.scaled_blck, self.scaled_blck)
+        numerator = (self.original_blck*self.scaled_blck).sum(dim=0)
+        denominator = (self.scaled_blck*self.scaled_blck).sum(dim=0)
         self.alpha = numerator/denominator
         self.final_blck = self.scaled_blck * self.alpha
+
+    def _report_(self):
+        print("Max absolute value:", self.minV)
+        print("Original block:", self.original_blck)
+        print("Scaled block:", self.scaled_blck)
+        print("Scaling applied:", self.scaling)
+        print("Alpha calculated:", self.alpha)
+        print("Resulting effective block:",self.final_blck)
+        input('Press key to continue...')
 
 if __name__=="__main__":
     test = Quantizer(4)

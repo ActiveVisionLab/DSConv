@@ -27,52 +27,47 @@ class DSConvEngine:
         for mod in model.modules():
             if isinstance(mod, nn.modules.conv.Conv2d):
                 groups = mod.groups
-                new_tensor, sblck, alpValues = self.tensor_to_block(mod.weight.data.cpu().numpy(), groups)
+                new_tensor, sblck, alpValues = self.tensor_to_block(mod.weight.data, groups)
                 mod.weight.data = torch.tensor(new_tensor).float()
                 int_tensors.append(sblck)
                 alpha_tensors.append(alpValues)
         return model, int_tensors, alpha_tensors
 
-    def tensor_to_block(self, nparray, groups=1):
+    def tensor_to_block(self, array, groups=1):
         # Assuming the shape of the array to be:
         # [channel, depth, height, width]
-        new_tensor = np.empty(nparray.shape)
-        int_tensor = np.empty(nparray.shape)
-        nmb_blocks = math.ceil((nparray.shape[1])/(self.bs_size*groups))
+        new_tensor = torch.empty(array.shape)
+        int_tensor = torch.empty(array.shape)
+        nmb_blocks = math.ceil((array.shape[1])/(self.bs_size*groups))
         bs = self.bs_size
-        alp_tensor = np.empty((nparray.shape[0], nmb_blocks, nparray.shape[2],
-                              nparray.shape[3]))
+        alp_tensor = torch.empty((array.shape[0], nmb_blocks, array.shape[2],
+                              array.shape[3]))
         # Iterates through every channel
-        for c in range(nparray.shape[0]):
+        for c in range(array.shape[0]):
             for i in range(nmb_blocks):
                 if i == nmb_blocks-1:
                     # Means this is the last block
-                    blck, sblck, alp = self.channel_to_block(nparray[c, i*bs:, ...])
+                    blck, sblck, alp = self.channel_to_block(array[c, i*bs:, ...])
                     new_tensor[c, i*bs:, ...] = blck
                     int_tensor[c, i*bs:, ...] = sblck
                     alp_tensor[c, i, ...] = alp
                 else:
-                    blck, sblck, alp =self.channel_to_block(nparray[c, i*bs:(i+1)*bs, ...])
+                    blck, sblck, alp =self.channel_to_block(array[c, i*bs:(i+1)*bs, ...])
                     new_tensor[c, i*bs:(i+1)*bs,...] = blck
                     int_tensor[c, i*bs:(i+1)*bs, ...] = sblck
                     alp_tensor[c, i, ...] = alp
 
         return new_tensor, int_tensor, alp_tensor
 
+
     # Working as expected
-    def channel_to_block(self,nparray):
+    def channel_to_block(self,array):
         # Assuming the shape of the array to be:
         # [bs_size, h, w]
-        new_tensor = np.empty(nparray.shape)
-        int_tensor = np.empty(nparray.shape)
-        alp_tensor = np.empty((1, nparray.shape[1], nparray.shape[2]))
-        for h in range(nparray.shape[1]):
-            for l in range(nparray.shape[2]):
-                blck, sblck, alp = self.quantizer.quantize_block(nparray[:, h, l])
-                new_tensor[:, h, l] = blck
-                int_tensor[:, h, l] = sblck
-                alp_tensor[0, h, l] = alp
-        return new_tensor, int_tensor, alp_tensor
+
+        blck, sblck, alp = self.quantizer.quantize_block(array)
+
+        return blck, sblck, alp #new_tensor, int_tensor, alp_tensor
 
 
     def __call__(self, model, block_model):
@@ -82,13 +77,13 @@ class DSConvEngine:
         i = 0
         for bmod, mod in zip(block_model.modules(), model.modules()):
             if isinstance(bmod, DSConv2d):
-                prev = bmod.weight.data.cpu().numpy().shape
-                bmod.weight.data = torch.Tensor(sblocks[i].astype(int))
-                pos = bmod.weight.data.cpu().numpy().shape
+                prev = bmod.weight.data.shape
+                bmod.weight.data = sblocks[i]
+                pos = bmod.weight.data.shape
                 assert(prev==pos), "Original model weight mus be the same shape as DSConv version"
-                prev = bmod.alpha.data.cpu().numpy().shape
-                bmod.alpha.data = torch.Tensor(alpha_tensors[i])
-                pos = bmod.alpha.data.cpu().numpy().shape
+                prev = bmod.alpha.data.shape
+                bmod.alpha.data = alpha_tensors[i]
+                pos = bmod.alpha.data.shape
                 assert(prev==pos), "Original model alpha values must be the same shape as DSConv version"
                 i+=1
             if isinstance(bmod, nn.Linear):
