@@ -14,11 +14,11 @@ class DSConv2d(_ConvNd):
 
     def __init__(self, in_channels, out_channels, kernel_size, block_size, stride=1,
                  padding=0, dilation=1, groups=1, bias=False, KDSBias=False, CDS=False):
-
         kernel_size = _pair(kernel_size)
         stride = _pair(stride)
         padding = _pair(padding)
         dilation = _pair(dilation)
+
         blck_numb = math.ceil(((in_channels)/(block_size*groups)))
         super(DSConv2d, self).__init__(
             in_channels, out_channels, kernel_size, stride, padding, dilation,

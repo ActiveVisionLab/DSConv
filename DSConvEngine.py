@@ -48,35 +48,23 @@ class DSConvEngine:
         # Iterates through every block
         for i in range(nmb_blocks):
             if i ==nmb_blocks-1:
-                blck, sblck, alp = self.channel_to_block(array[:, i*bs:, ...])
+                blck, sblck, alp = self.quantizer.quantize_block(array[:, i*bs:, ...])
                 new_tensor[:, i*bs:, ...] = blck
                 int_tensor[:, i*bs:, ...] = sblck
                 alp_tensor[:, i, ...] = alp
             else:
-                blck, sblck, alp = self.channel_to_block(array[:, i*bs:(i+1)*bs, ...])
+                blck, sblck, alp = self.quantizer.quantize_block(array[:, i*bs:(i+1)*bs, ...])
                 new_tensor[:, i*bs:(i+1)*bs, ...] = blck
                 int_tensor[:, i*bs:(i+1)*bs, ...] = sblck
                 alp_tensor[:, i, ...] = alp
 
         return new_tensor, int_tensor, alp_tensor
 
-
-    # Working as expected
-    def channel_to_block(self,array):
-        # Assuming the shape of the array to be:
-        # [channel, bs_size, h, w]
-        blck, sblck, alp = self.quantizer.quantize_block(array)
-
-        return blck, sblck, alp #new_tensor, int_tensor, alp_tensor
-
-
     def __call__(self, model, block_model):
         print("Returning pretrained model with bit length", self.nmb_bits, "and block size of", self.bs_size)
 
         start = time.time()
         new_model, sblocks, alpha_tensors = self.toDSConv(model)
-        end = time.time()
-        print("It took", end-start, "seconds for conversion")
 
         i = 0
         for bmod, mod in zip(block_model.modules(), model.modules()):
@@ -99,6 +87,9 @@ class DSConvEngine:
                 bmod.bias.data = mod.bias.data.cpu()
                 bmod.running_mean.data = mod.running_mean.data.cpu()
                 bmod.running_var.data = mod.running_var.data.cpu()
+
+        end = time.time()
+        print("It took", end-start, "seconds for conversion")
 
         return block_model
 
