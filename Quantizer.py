@@ -7,21 +7,25 @@ class Quantizer:
     def __init__(self, nmb_bits):
         self.nmb_bits = nmb_bits
         self.minV = -1*pow(2, self.nmb_bits-1)
+        self.maxV = pow(2, self.nmb_bits-1)-1
 
     def quantize_block(self, blcknump, debug=False, alpha_calc='L2'):
         # Finding the Scaling to quantize using full range
-        # This receives the block in shape [blk, height, width]
+        # This receives the block in shape [channel, blk, height, width]
 
         self.original_blck = blcknump
 
         absblcknump = torch.abs(blcknump)
-        _, indexPos = torch.max(absblcknump, dim=0)
-        absmax = torch.gather(blcknump, 0, indexPos.unsqueeze(0))
+        _, indexPos = torch.max(absblcknump, dim=1)
+        absmax = torch.gather(blcknump, 1, indexPos.unsqueeze(1))
 
         self.scaling = self.minV/absmax
 
         # Half LSB rounding
         self.scaled_blck = torch.round(self.scaling*blcknump)
+
+        # In case a value was 3.8 and was rounded to 4 for 3 bit for example
+        #self.scaled_blck = torch.clamp(self.scaled_blck, min =self.minV, max=self.maxV)
 
         # Here we find the alpha value that minimizes 2-norm
         self._finding_alpha_KL_() if alpha_calc=='KL' else self._finding_alpha_()
@@ -61,10 +65,10 @@ class Quantizer:
         """
         # Applying minimum squares we can find a value of the "bonus multiply"
         # that minimizes the square distance to the original block
-        numerator = (self.original_blck*self.scaled_blck).sum(dim=0)
-        denominator = (self.scaled_blck*self.scaled_blck).sum(dim=0)
+        numerator = (self.original_blck*self.scaled_blck).sum(dim=1)
+        denominator = (self.scaled_blck*self.scaled_blck).sum(dim=1)
         self.alpha = numerator/denominator
-        self.final_blck = self.scaled_blck * self.alpha
+        self.final_blck = self.scaled_blck * self.alpha.unsqueeze(1)
 
     def _report_(self):
         print("Max absolute value:", self.minV)

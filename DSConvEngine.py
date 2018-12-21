@@ -6,6 +6,7 @@ from .Quantizer import Quantizer
 import math
 import numpy as np
 from tqdm import tqdm
+import time
 
 # Pytorch
 import torch
@@ -31,6 +32,7 @@ class DSConvEngine:
                 mod.weight.data = torch.tensor(new_tensor).float()
                 int_tensors.append(sblck)
                 alpha_tensors.append(alpValues)
+
         return model, int_tensors, alpha_tensors
 
     def tensor_to_block(self, array, groups=1):
@@ -42,20 +44,19 @@ class DSConvEngine:
         bs = self.bs_size
         alp_tensor = torch.empty((array.shape[0], nmb_blocks, array.shape[2],
                               array.shape[3]))
-        # Iterates through every channel
-        for c in range(array.shape[0]):
-            for i in range(nmb_blocks):
-                if i == nmb_blocks-1:
-                    # Means this is the last block
-                    blck, sblck, alp = self.channel_to_block(array[c, i*bs:, ...])
-                    new_tensor[c, i*bs:, ...] = blck
-                    int_tensor[c, i*bs:, ...] = sblck
-                    alp_tensor[c, i, ...] = alp
-                else:
-                    blck, sblck, alp =self.channel_to_block(array[c, i*bs:(i+1)*bs, ...])
-                    new_tensor[c, i*bs:(i+1)*bs,...] = blck
-                    int_tensor[c, i*bs:(i+1)*bs, ...] = sblck
-                    alp_tensor[c, i, ...] = alp
+
+        # Iterates through every block
+        for i in range(nmb_blocks):
+            if i ==nmb_blocks-1:
+                blck, sblck, alp = self.channel_to_block(array[:, i*bs:, ...])
+                new_tensor[:, i*bs:, ...] = blck
+                int_tensor[:, i*bs:, ...] = sblck
+                alp_tensor[:, i, ...] = alp
+            else:
+                blck, sblck, alp = self.channel_to_block(array[:, i*bs:(i+1)*bs, ...])
+                new_tensor[:, i*bs:(i+1)*bs, ...] = blck
+                int_tensor[:, i*bs:(i+1)*bs, ...] = sblck
+                alp_tensor[:, i, ...] = alp
 
         return new_tensor, int_tensor, alp_tensor
 
@@ -63,8 +64,7 @@ class DSConvEngine:
     # Working as expected
     def channel_to_block(self,array):
         # Assuming the shape of the array to be:
-        # [bs_size, h, w]
-
+        # [channel, bs_size, h, w]
         blck, sblck, alp = self.quantizer.quantize_block(array)
 
         return blck, sblck, alp #new_tensor, int_tensor, alp_tensor
@@ -72,7 +72,11 @@ class DSConvEngine:
 
     def __call__(self, model, block_model):
         print("Returning pretrained model with bit length", self.nmb_bits, "and block size of", self.bs_size)
+
+        start = time.time()
         new_model, sblocks, alpha_tensors = self.toDSConv(model)
+        end = time.time()
+        print("It took", end-start, "seconds for conversion")
 
         i = 0
         for bmod, mod in zip(block_model.modules(), model.modules()):

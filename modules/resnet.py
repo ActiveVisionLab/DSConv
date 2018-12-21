@@ -155,6 +155,8 @@ def block_resnet50(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000)
     if pretrained==True:
         model = torchvision.models.resnet50(pretrained=True)
         eng = DSConvEngine(block_size, bit_nmb)
+        model = model.cuda()
+        block_model = block_model.cuda()
         block_model = eng(model, block_model)
     return block_model
 
