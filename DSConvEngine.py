@@ -29,7 +29,7 @@ class DSConvEngine:
             if isinstance(mod, nn.modules.conv.Conv2d):
                 groups = mod.groups
                 new_tensor, sblck, alpValues = self.tensor_to_block(mod.weight.data, groups)
-                mod.weight.data = torch.tensor(new_tensor).float()
+                mod.weight.data = new_tensor
                 int_tensors.append(sblck)
                 alpha_tensors.append(alpValues)
 
@@ -67,16 +67,20 @@ class DSConvEngine:
         new_model, sblocks, alpha_tensors = self.toDSConv(model)
 
         i = 0
-        for bmod, mod in zip(block_model.modules(), model.modules()):
+        for bmod, mod, newmod in zip(block_model.modules(), model.modules(), new_model.modules()):
             if isinstance(bmod, DSConv2d):
-                prev = bmod.weight.data.shape
-                bmod.weight.data = sblocks[i]
-                pos = bmod.weight.data.shape
-                assert(prev==pos), "Original model weight mus be the same shape as DSConv version"
+                prev = bmod.intweight.data.shape
+                bmod.intweight.data = sblocks[i]
+                pos = bmod.intweight.data.shape
+                assert(prev==pos), "Original model int weight must be the same shape as DSConv version"
                 prev = bmod.alpha.data.shape
                 bmod.alpha.data = alpha_tensors[i]
                 pos = bmod.alpha.data.shape
                 assert(prev==pos), "Original model alpha values must be the same shape as DSConv version"
+                prev = bmod.weight.data.shape
+                bmod.weight.data = newmod.weight.data
+                pos = bmod.weight.data.shape
+                assert(prev==pos), "Original model weights must be the same shape as DSConv version"
                 i+=1
             if isinstance(bmod, nn.Linear):
                 bmod.weight.data = mod.weight.data.cpu()

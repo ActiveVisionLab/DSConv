@@ -25,17 +25,18 @@ class DSConv2d(_ConvNd):
             False, _pair(0), groups, bias)
 
         # KDS weight From Paper
-        self.alpha = Parameter(torch.Tensor(out_channels, blck_numb, *kernel_size))
+        self.intweight = torch.Tensor(out_channels, in_channels, *kernel_size)
+        self.alpha = torch.Tensor(out_channels, blck_numb, *kernel_size)
 
         # KDS bias From Paper
         self.KDSBias = KDSBias
         self.CDS = CDS
 
         if KDSBias:
-            self.KDSb = Parameter(torch.Tensor(out_channels, blck_numb, *kernel_size))
+            self.KDSb = torch.Tensor(out_channels, blck_numb, *kernel_size)
         if CDS:
-            self.CDSw = Parameter(torch.Tensor(out_channels))
-            self.CDSb = Parameter(torch.Tensor(out_channels))
+            self.CDSw = torch.Tensor(out_channels)
+            self.CDSb = torch.Tensor(out_channels)
 
         self.reset_parameters()
 
@@ -81,10 +82,10 @@ class DSConv2d(_ConvNd):
 
     def forward(self, input):
         # Get resulting weight
-        weight_res = self.get_weight_res()
+        #weight_res = self.get_weight_res()
 
         # Returning convolution
-        return F.conv2d(input, weight_res, self.bias,
+        return F.conv2d(input, self.weight, self.bias,
                             self.stride, self.padding, self.dilation,
                             self.groups)
 
