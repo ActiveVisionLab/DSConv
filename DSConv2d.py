@@ -1,6 +1,5 @@
 # Other
 import math
-import numpy as np
 
 # PyTorch
 import torch
@@ -89,29 +88,3 @@ class DSConv2d(_ConvNd):
                             self.stride, self.padding, self.dilation,
                             self.groups)
 
-if __name__ == "__main__":
-    class Test(nn.Module):
-        def __init__(self):
-            super(Test, self).__init__()
-            self.conv1 = DSConv2d(3, 10, 3, 32, KDSBias=True, CDS=True)
-            self.fc1 = nn.Linear(10*3*3, 10)
-
-        def forward(self, x):
-            x = F.relu(self.conv1(x))
-            x = x.view(-1, 10*3*3)
-            x = self.fc1(x)
-            return x
-
-    net = Test()
-    criterion = nn.CrossEntropyLoss()
-    inputs = np.random.rand(1, 3, 32, 32)
-    labels = np.random.random_integers(9, size=(100))
-    outputs = net(torch.Tensor(inputs))
-    loss = criterion(outputs, torch.Tensor(labels).long())
-    loss.backward()
-
-    for mod in net.modules():
-        if isinstance(mod, DSConv2d):
-            print(mod.alpha)
-            print(mod.weight)
-            print(mod.KDSb)

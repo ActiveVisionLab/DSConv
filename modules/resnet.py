@@ -172,19 +172,3 @@ def block_resnet34(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000)
 
     return block_model
 
-if __name__ == "__main__":
-    model = block_resnet50(pretrained=True, block_size=128, bit_nmb = 3)
-    print(model)
-    input('')
-    k = 0
-    for mod in model.modules():
-        if isinstance(mod, nn.modules.conv.Conv2d):
-            print("There is a Conv2d here")
-        if isinstance(mod, DSConv2d):
-            print(mod.weight.data.numpy().shape)
-            print(mod.alpha.data.numpy().shape)
-            print()
-            input('')
-            for param in mod.parameters():
-                k+=1
-    print("There are", k, "BlockConvs parameters")

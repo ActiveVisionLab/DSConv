@@ -1,5 +1,5 @@
 import sys, os
-sys.path.insert(0, '/home/marcelo/PyTorch/MobileNet-V2-Pytorch/')
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+'/../MobileNet-V2-Pytorch/')
 
 # Others
 import math
@@ -21,7 +21,7 @@ def block_mobilenet(pretrained=False, bit_nmb=8, block_size=32, num_classes=1000
     if pretrained:
         model = MobileNetV2.MobileNetV2()
         model = torch.nn.DataParallel(model).cuda()
-        model.load_state_dict(torch.load('/home/marcelo/PyTorch/MobileNet-V2-Pytorch/mobilenetv2_Top1_71.806_Top2_90.410.pth.tar'))
+        model.load_state_dict(torch.load('../MobileNet-V2-Pytorch/mobilenetv2_Top1_71.806_Top2_90.410.pth.tar'))
         block_model = torch.nn.DataParallel(block_model).cuda()
         eng = DSConvEngine(block_size, bit_nmb)
         block_model = eng(model, block_model)
@@ -119,17 +119,3 @@ class BlockMobileNetV2(nn.Module):
         x = self.classifier(x)
         return x
 
-if __name__=="__main__":
-    model = block_mobilenet(pretrained=True, block_size=128, bit_nmb=3)
-    k = 0
-    for mod in model.modules():
-        if isinstance(mod, nn.modules.conv.Conv2d):
-            print("There is a Conv2d here")
-        if isinstance(mod, DSConv2d):
-            print(mod.weight.data.numpy().shape)
-            print(mod.alpha.data.numpy().shape)
-            print()
-            input('')
-            for param in mod.parameters():
-                k+=1
-    print("There are", k, "DSConvs parameters")

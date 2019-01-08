@@ -79,7 +79,3 @@ class Quantizer:
         print("Resulting effective block:",self.final_blck)
         input('Press key to continue...')
 
-if __name__=="__main__":
-    test = Quantizer(4)
-    example_block = [0.3, 0.1, 0.4, -0.5, -.3, -.4, -.5, -.5, 1]
-    test.quantize_block(example_block, debug = True)

@@ -4,8 +4,6 @@ from .Quantizer import Quantizer
 
 # Others
 import math
-import numpy as np
-from tqdm import tqdm
 import time
 
 # Pytorch
@@ -96,83 +94,3 @@ class DSConvEngine:
         print("It took", end-start, "seconds for conversion")
 
         return block_model
-
-if __name__ == "__main__":
-    model = torchvision.models.resnet101(pretrained=True)
-    model.eval()
-
-    test = DSConvEngine(32, 3)
-    new_model, sblocks, alpha_tensors = test.toDSConv(model)
-
-    print("Done Converting to BFP")
-
-    for i in range(len(sblocks)):
-        alpha = alpha_tensors[i]
-        int_block = sblocks[i]
-        nmb_blocks = alpha.shape[1]
-        total_depth = int_block.shape[1]
-        bs = total_depth//nmb_blocks
-        leftover_last_block = total_depth-(nmb_blocks-1)*bs
-        print("Number blocks:", nmb_blocks)
-        print("Block size:", bs)
-        print("Total depth:", total_depth)
-        print("Leftover:", leftover_last_block)
-        alpha_result = np.empty(int_block.shape)
-        for i in range(nmb_blocks):
-            if i == nmb_blocks-1:
-                # Leftover
-                shp = alpha.shape
-                to_repeat = alpha[:, i, ...].reshape((shp[0], 1, shp[2], shp[3]))
-                alpha_result[:,i*bs:,...]=np.repeat(to_repeat, leftover_last_block, axis=1)
-                input('')
-            else:
-                # Use block size
-                shp = alpha.shape
-                to_repeat = alpha[:, i, ...].reshape((shp[0], 1, shp[2], shp[3]))
-                alpha_result[:,i*bs:(i+1)*bs,...]=np.repeat(to_repeat, bs, axis=1)
-
-        effective_weight = np.multiply(alpha_result,int_block)
-        print(alpha_result.shape)
-        print(int_block.shape)
-        print(effective_weight.shape)
-        print(alpha_result[0])
-        print(alpha_result[1])
-        input('')
-
-    # Evaluating new Model
-    normalize = transforms.Normalize(
-        mean = [0.485, 0.456, 0.406],
-        std = [0.229, 0.224, 0.225]
-    )
-    preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        normalize
-    ])
-
-    # Loading Data
-    valdir = '/home/marcelo/storage/ILSVRC2012/ILSVRC2012_val/'
-    data = datasets.ImageFolder(valdir, preprocess)
-    val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, preprocess),
-        batch_size = 20,
-        shuffle = False,
-        num_workers = 10,
-        pin_memory=True)
-
-    correct, total = 0, 0
-    print("Starting Eval")
-    with torch.no_grad():
-        for i, (inputImage, target) in tqdm(enumerate(val_loader)):
-            output = new_model(inputImage)
-            _, predicted = torch.max(output.data, 1)
-
-            total+=target.size(0)
-            correct+=(predicted==target).sum().item()
-
-            if i%100==0:
-                print(i)
-        print("Correct:", correct)
-        print("Total:", total)
-        print("Accuracy:", correct/total)
